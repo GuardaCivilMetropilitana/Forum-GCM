@@ -11,7 +11,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
         import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -28,15 +27,12 @@
         const app = initializeApp(firebaseConfig);
         const analytics = getAnalytics(app);
         const db = getFirestore(app);
-        const auth = getAuth(app);
 
         // Tornar as variáveis globais
         window.firebaseApp = app;
         window.firebaseDB = db;
-        window.firebaseAuth = auth;
         window.firebaseFunctions = {
-            collection, addDoc, getDocs, updateDoc, doc, query, where, orderBy,
-            signInWithEmailAndPassword, signOut
+            collection, addDoc, getDocs, updateDoc, doc, query, where, orderBy
         };
     </script>
 
@@ -447,7 +443,7 @@
             <div class="header-content">
                 <div class="logo">
                     <!-- Logo fictício da GCM -->
-                    <img src="logo.png" alt="GCM Logo" class="logo-image"
+                    <img src="logo.png" alt="GCM Logo" class="logo-image">
                 </div>
                 <nav>
                     <ul>
@@ -493,8 +489,8 @@
                 <div class="form-container">
                     <form id="login-form">
                         <div class="form-group">
-                            <label for="login-email">E-mail</label>
-                            <input type="email" id="login-email" required>
+                            <label for="login-username">Nome de Usuário</label>
+                            <input type="text" id="login-username" required>
                         </div>
                         <div class="form-group">
                             <label for="login-password">Senha</label>
@@ -797,8 +793,31 @@
             }
         }
         
+        // Sistema de Autenticação Personalizado
+        class CustomAuthService {
+            constructor() {
+                this.admins = [
+                    { username: 'admin', password: 'admin123', name: 'Administrador Principal' },
+                    { username: 'gcm', password: 'gcm26', name: 'GCM Oficial' }
+                ];
+            }
+            
+            async authenticate(username, password) {
+                // Simular uma verificação assíncrona
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        const admin = this.admins.find(a => 
+                            a.username === username && a.password === password
+                        );
+                        resolve(admin || null);
+                    }, 1000);
+                });
+            }
+        }
+        
         // Inicializar serviços
         const discordWebhook = new DiscordWebhookService();
+        const authService = new CustomAuthService();
         
         // Elementos DOM
         const pages = document.querySelectorAll('.page');
@@ -859,42 +878,55 @@
             showPage('login');
         });
         
-        // Login com Firebase
+        // Login com Nome de Usuário
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
+            const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
             
+            // Mostrar loading
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.innerHTML = '<div class="loading"></div> Entrando...';
+            submitBtn.disabled = true;
+            
             try {
-                const { signInWithEmailAndPassword } = window.firebaseFunctions;
-                const userCredential = await signInWithEmailAndPassword(window.firebaseAuth, email, password);
-                const user = userCredential.user;
+                const admin = await authService.authenticate(username, password);
                 
-                showAlert(loginAlert, 'Login administrativo realizado com sucesso!', 'success');
-                
-                // Salvar estado de login
-                localStorage.setItem('loggedIn', 'true');
-                localStorage.setItem('userEmail', user.email);
-                
-                // Atualizar display do admin logado
-                if (loggedAdminElement) {
-                    loggedAdminElement.textContent = user.email;
+                if (admin) {
+                    showAlert(loginAlert, 'Login administrativo realizado com sucesso!', 'success');
+                    
+                    // Salvar estado de login
+                    localStorage.setItem('loggedIn', 'true');
+                    localStorage.setItem('adminUsername', admin.username);
+                    localStorage.setItem('adminName', admin.name);
+                    
+                    // Atualizar display do admin logado
+                    if (loggedAdminElement) {
+                        loggedAdminElement.textContent = admin.name;
+                    }
+                    
+                    // Mostrar/ocultar links
+                    adminLink.style.display = 'block';
+                    logoutLink.style.display = 'block';
+                    
+                    // Redirecionar para a página administrativa
+                    setTimeout(() => {
+                        showPage('admin');
+                        loginForm.reset();
+                        loadAdminData();
+                    }, 1500);
+                } else {
+                    showAlert(loginAlert, 'Nome de usuário ou senha incorretos!', 'error');
                 }
-                
-                // Mostrar/ocultar links
-                adminLink.style.display = 'block';
-                logoutLink.style.display = 'block';
-                
-                // Redirecionar para a página administrativa
-                setTimeout(() => {
-                    showPage('admin');
-                    loginForm.reset();
-                    loadAdminData();
-                }, 1500);
                 
             } catch (error) {
                 console.error('Erro no login:', error);
-                showAlert(loginAlert, 'Credenciais administrativas inválidas!', 'error');
+                showAlert(loginAlert, 'Erro ao fazer login. Tente novamente.', 'error');
+            } finally {
+                // Restaurar botão
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
         });
         
@@ -978,20 +1010,15 @@
         });
         
         // Logout
-        logoutLink.addEventListener('click', async (e) => {
+        logoutLink.addEventListener('click', (e) => {
             e.preventDefault();
-            try {
-                const { signOut } = window.firebaseFunctions;
-                await signOut(window.firebaseAuth);
-                
-                localStorage.removeItem('loggedIn');
-                localStorage.removeItem('userEmail');
-                adminLink.style.display = 'none';
-                logoutLink.style.display = 'none';
-                showPage('home');
-            } catch (error) {
-                console.error('Erro no logout:', error);
-            }
+            
+            localStorage.removeItem('loggedIn');
+            localStorage.removeItem('adminUsername');
+            localStorage.removeItem('adminName');
+            adminLink.style.display = 'none';
+            logoutLink.style.display = 'none';
+            showPage('home');
         });
         
         // Fechar modal
@@ -1092,10 +1119,10 @@
                     status: status
                 });
                 
-                const adminEmail = localStorage.getItem('userEmail') || 'Administrador';
+                const adminName = localStorage.getItem('adminName') || 'Administrador';
                 
                 // Enviar notificação de resultado
-                await discordWebhook.sendResultNotification(application, status, adminEmail);
+                await discordWebhook.sendResultNotification(application, status, adminName);
                 
                 alert(`Candidatura ${status.toLowerCase()} com sucesso! Notificação enviada.`);
                 loadAdminData();
@@ -1160,11 +1187,11 @@
             const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
             
             if (isLoggedIn) {
-                const userEmail = localStorage.getItem('userEmail');
+                const adminName = localStorage.getItem('adminName');
                 adminLink.style.display = 'block';
                 logoutLink.style.display = 'block';
-                if (loggedAdminElement && userEmail) {
-                    loggedAdminElement.textContent = userEmail;
+                if (loggedAdminElement && adminName) {
+                    loggedAdminElement.textContent = adminName;
                 }
             }
             
