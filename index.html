@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recrutamento GCM</title>
+    <title>Forum GCM</title>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkkzzkQF1jnqO0v0xxQKl99VY4WBi9i3E",
+            authDomain: "gcmdados.firebaseapp.com",
+            projectId: "gcmdados",
+            storageBucket: "gcmdados.firebasestorage.app",
+            messagingSenderId: "453795833548",
+            appId: "1:453795833548:web:bc1628d4cc6ab249acc469",
+            measurementId: "G-7K47KTSDGD"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Tornar as variáveis globais
+        window.firebaseApp = app;
+        window.firebaseDB = db;
+        window.firebaseAuth = auth;
+        window.firebaseFunctions = {
+            collection, addDoc, getDocs, updateDoc, doc, query, where, orderBy,
+            signInWithEmailAndPassword, signOut
+        };
+    </script>
+
     <style>
         :root {
             --primary-color: #1e3a8a;
@@ -431,7 +467,7 @@
             <!-- Página Inicial -->
             <section id="home" class="page active">
                 <h2>Bem-vindo ao Sistema de Recrutamento da GCM</h2>
-                <p>Este é o sistema oficial de recrutamento da Guarda Civil Municipal. Aqui você pode se candidatar para fazer parte da nossa equipe.</p>
+                <p>Este é o sistema oficial de recrutamento da Guarda Civil Metropolitana. Aqui você pode se candidatar para fazer parte da nossa equipe.</p>
                 
                 <div style="margin: 2rem 0;">
                     <h3>Como participar do processo seletivo</h3>
@@ -458,8 +494,8 @@
                 <div class="form-container">
                     <form id="login-form">
                         <div class="form-group">
-                            <label for="login-username">Usuário ou E-mail</label>
-                            <input type="text" id="login-username" required>
+                            <label for="login-email">E-mail</label>
+                            <input type="email" id="login-email" required>
                         </div>
                         <div class="form-group">
                             <label for="login-password">Senha</label>
@@ -585,19 +621,6 @@
                         <!-- As candidaturas serão inseridas aqui via JavaScript -->
                     </tbody>
                 </table>
-                
-                <div style="margin-top: 2rem;">
-                    <button class="btn" id="export-btn">Exportar Dados</button>
-                    <button class="btn btn-secondary" id="import-btn">Importar Dados</button>
-                    <button class="btn btn-danger" id="reset-btn">Limpar Todos os Dados</button>
-                    <input type="file" id="import-file" accept=".json" style="display: none;">
-                </div>
-                
-                <div style="margin-top: 2rem; padding: 1rem; background-color: #f8fafc; border-radius: 4px;">
-                    <h4>Backup dos Dados</h4>
-                    <p style="margin-bottom: 1rem;">Os dados são salvos automaticamente no seu navegador. Para fazer backup, exporte os dados regularmente.</p>
-                    <p><strong>Última atualização:</strong> <span id="last-updated">Nunca</span></p>
-                </div>
             </section>
         </div>
     </main>
@@ -615,198 +638,11 @@
     
     <footer>
         <div class="container">
-            <p>&copy; 2023 Guarda Civil Municipal - Todos os direitos reservados</p>
+            <p>&copy; 2025 Guarda Civil Metropolitana - Todos os direitos reservados</p>
         </div>
     </footer>
     
     <script>
-        // Sistema de armazenamento para GitHub Pages (usando localStorage)
-        class GitHubPagesDB {
-            constructor() {
-                this.storageKey = 'gcm_recruitment_data';
-                this.data = this.loadData();
-            }
-            
-            // Carregar dados do localStorage
-            loadData() {
-                try {
-                    const savedData = localStorage.getItem(this.storageKey);
-                    if (savedData) {
-                        return JSON.parse(savedData);
-                    }
-                    
-                    // Dados padrão se não houver dados salvos
-                    return {
-                        users: [
-                            { 
-                                id: 1, 
-                                name: "admin", 
-                                email: "admin@gcm.com",
-                                password: "admin123", 
-                                isAdmin: true, 
-                                registrationDate: new Date().toISOString().split('T')[0] 
-                            },
-                            { 
-                                id: 2, 
-                                name: "GCM Oficial", 
-                                email: "gcm@gmail.com",
-                                password: "gcm26", 
-                                isAdmin: true, 
-                                registrationDate: new Date().toISOString().split('T')[0] 
-                            }
-                        ],
-                        applications: [],
-                        lastUpdated: new Date().toISOString()
-                    };
-                } catch (error) {
-                    console.error('Erro ao carregar dados:', error);
-                    return this.getDefaultData();
-                }
-            }
-            
-            // Dados padrão
-            getDefaultData() {
-                return {
-                    users: [
-                        { 
-                            id: 1, 
-                            name: "admin", 
-                            email: "admin@gcm.com",
-                            password: "admin123", 
-                            isAdmin: true, 
-                            registrationDate: new Date().toISOString().split('T')[0] 
-                        },
-                        { 
-                            id: 2, 
-                            name: "GCM Oficial", 
-                            email: "gcm@gmail.com",
-                            password: "gcm26", 
-                            isAdmin: true, 
-                            registrationDate: new Date().toISOString().split('T')[0] 
-                        }
-                    ],
-                    applications: [],
-                    lastUpdated: new Date().toISOString()
-                };
-            }
-            
-            // Salvar dados no localStorage
-            saveData() {
-                try {
-                    this.data.lastUpdated = new Date().toISOString();
-                    localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-                    this.updateLastUpdatedDisplay();
-                    return true;
-                } catch (error) {
-                    console.error('Erro ao salvar dados:', error);
-                    return false;
-                }
-            }
-            
-            // Atualizar display da última atualização
-            updateLastUpdatedDisplay() {
-                const lastUpdatedElement = document.getElementById('last-updated');
-                if (lastUpdatedElement) {
-                    const date = new Date(this.data.lastUpdated);
-                    lastUpdatedElement.textContent = date.toLocaleString('pt-BR');
-                }
-            }
-            
-            // Exportar dados como JSON (download)
-            exportData() {
-                const dataStr = JSON.stringify(this.data, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `gcm_data_${new Date().toISOString().split('T')[0]}.json`;
-                
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }
-            
-            // Importar dados de um arquivo JSON
-            importData(jsonData) {
-                try {
-                    const importedData = JSON.parse(jsonData);
-                    
-                    // Validar estrutura básica
-                    if (importedData.users && importedData.applications) {
-                        this.data = importedData;
-                        this.saveData();
-                        return true;
-                    } else {
-                        return false;
-                    }
-                } catch (error) {
-                    console.error('Erro ao importar dados:', error);
-                    return false;
-                }
-            }
-            
-            // Limpar todos os dados
-            clearAllData() {
-                if (confirm('Tem certeza que deseja limpar TODOS os dados? Esta ação não pode ser desfeita.')) {
-                    this.data = this.getDefaultData();
-                    this.saveData();
-                    return true;
-                }
-                return false;
-            }
-            
-            // Métodos para usuários
-            getUsers() {
-                return this.data.users || [];
-            }
-            
-            findUserByName(name) {
-                return this.getUsers().find(user => user.name === name);
-            }
-            
-            findUserByEmail(email) {
-                return this.getUsers().find(user => user.email === email);
-            }
-            
-            findUserByUsernameOrEmail(username) {
-                return this.getUsers().find(user => 
-                    user.name === username || user.email === username
-                );
-            }
-            
-            // Métodos para candidaturas
-            getApplications() {
-                return this.data.applications || [];
-            }
-            
-            addApplication(application) {
-                const applications = this.getApplications();
-                application.id = applications.length > 0 ? Math.max(...applications.map(a => a.id)) + 1 : 1;
-                application.registrationDate = new Date().toISOString().split('T')[0];
-                application.status = "Pendente";
-                
-                applications.push(application);
-                this.data.applications = applications;
-                this.saveData();
-                return application;
-            }
-            
-            updateApplicationStatus(id, status) {
-                const applications = this.getApplications();
-                const applicationIndex = applications.findIndex(app => app.id === id);
-                
-                if (applicationIndex !== -1) {
-                    applications[applicationIndex].status = status;
-                    this.data.applications = applications;
-                    this.saveData();
-                    return true;
-                }
-                return false;
-            }
-        }
-
         // Serviço de Webhook do Discord
         class DiscordWebhookService {
             constructor() {
@@ -960,92 +796,9 @@
                     return false;
                 }
             }
-            
-            // Enviar notificação de atualização de status (para admin)
-            async sendStatusUpdateNotification(application, oldStatus, newStatus, adminName) {
-                try {
-                    const statusEmojis = {
-                        'Pendente': '📝',
-                        'Aprovada': '✅',
-                        'Rejeitada': '❌'
-                    };
-                    
-                    const embed = {
-                        title: "🔄 Status da Candidatura Atualizado",
-                        description: `O status de uma candidatura foi alterado.`,
-                        color: newStatus === 'Aprovada' ? 0x10b981 : newStatus === 'Rejeitada' ? 0xef4444 : 0xf59e0b,
-                        fields: [
-                            {
-                                name: "Candidato",
-                                value: application.name,
-                                inline: true
-                            },
-                            {
-                                name: "Idade",
-                                value: application.age.toString(),
-                                inline: true
-                            },
-                            {
-                                name: "Discord ID",
-                                value: application.discordId || "Não informado",
-                                inline: true
-                            },
-                            {
-                                name: "Status Anterior",
-                                value: `${statusEmojis[oldStatus] || '📝'} ${oldStatus}`,
-                                inline: true
-                            },
-                            {
-                                name: "Novo Status",
-                                value: `${statusEmojis[newStatus] || '📝'} ${newStatus}`,
-                                inline: true
-                            },
-                            {
-                                name: "Atualizado por",
-                                value: adminName,
-                                inline: true
-                            },
-                            {
-                                name: "Data da Atualização",
-                                value: new Date().toLocaleString('pt-BR'),
-                                inline: false
-                            }
-                        ],
-                        timestamp: new Date().toISOString(),
-                        footer: {
-                            text: "Sistema de Recrutamento GCM"
-                        }
-                    };
-                    
-                    const message = {
-                        content: "📋 **ATUALIZAÇÃO DE STATUS** 📋",
-                        embeds: [embed]
-                    };
-                    
-                    const response = await fetch(this.registrationWebhookUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(message)
-                    });
-                    
-                    if (response.ok) {
-                        console.log('Notificação de status enviada com sucesso para o Discord');
-                        return true;
-                    } else {
-                        console.error('Erro ao enviar notificação de status para o Discord:', response.status);
-                        return false;
-                    }
-                } catch (error) {
-                    console.error('Erro ao enviar notificação de status para o Discord:', error);
-                    return false;
-                }
-            }
         }
         
         // Inicializar serviços
-        const db = new GitHubPagesDB();
         const discordWebhook = new DiscordWebhookService();
         
         // Elementos DOM
@@ -1062,10 +815,6 @@
         const applicationDetails = document.getElementById('application-details');
         const loginAlert = document.getElementById('login-alert');
         const registerAlert = document.getElementById('register-alert');
-        const exportBtn = document.getElementById('export-btn');
-        const importBtn = document.getElementById('import-btn');
-        const resetBtn = document.getElementById('reset-btn');
-        const importFile = document.getElementById('import-file');
         const registerBtn = document.getElementById('register-btn');
         const registerBtnText = document.getElementById('register-btn-text');
         const registerLoading = document.getElementById('register-loading');
@@ -1111,47 +860,46 @@
             showPage('login');
         });
         
-        // Login
-        loginForm.addEventListener('submit', (e) => {
+        // Login com Firebase
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('login-username').value;
+            const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             
-            // Verificar credenciais - agora aceita nome de usuário OU e-mail
-            const user = db.findUserByUsernameOrEmail(username);
-            
-            if (user && user.password === password && user.isAdmin) {
+            try {
+                const { signInWithEmailAndPassword } = window.firebaseFunctions;
+                const userCredential = await signInWithEmailAndPassword(window.firebaseAuth, email, password);
+                const user = userCredential.user;
+                
                 showAlert(loginAlert, 'Login administrativo realizado com sucesso!', 'success');
                 
                 // Salvar estado de login
                 localStorage.setItem('loggedIn', 'true');
-                localStorage.setItem('userName', user.name);
                 localStorage.setItem('userEmail', user.email);
-                localStorage.setItem('isAdmin', user.isAdmin);
-                localStorage.setItem('userId', user.id);
                 
                 // Atualizar display do admin logado
                 if (loggedAdminElement) {
-                    loggedAdminElement.textContent = user.name;
+                    loggedAdminElement.textContent = user.email;
                 }
                 
-                // Mostrar/ocultar links baseado no tipo de usuário
-                if (user.isAdmin) {
-                    adminLink.style.display = 'block';
-                }
+                // Mostrar/ocultar links
+                adminLink.style.display = 'block';
                 logoutLink.style.display = 'block';
                 
                 // Redirecionar para a página administrativa
                 setTimeout(() => {
                     showPage('admin');
                     loginForm.reset();
+                    loadAdminData();
                 }, 1500);
-            } else {
+                
+            } catch (error) {
+                console.error('Erro no login:', error);
                 showAlert(loginAlert, 'Credenciais administrativas inválidas!', 'error');
             }
         });
         
-        // Registro
+        // Registro com Firebase
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('register-name').value;
@@ -1176,9 +924,10 @@
             registerLoading.style.display = 'inline-block';
             
             try {
-                // Criar candidatura completa (sem criar usuário)
+                const { collection, addDoc } = window.firebaseFunctions;
+                
+                // Criar candidatura completa
                 const newApplication = {
-                    id: db.getApplications().length > 0 ? Math.max(...db.getApplications().map(a => a.id)) + 1 : 1,
                     name,
                     discordId,
                     age: parseInt(age),
@@ -1188,11 +937,14 @@
                     qualities,
                     defects,
                     previousCorps: previousCorps || 'Não informado',
-                    registrationDate: new Date().toISOString().split('T')[0],
-                    status: "Pendente"
+                    registrationDate: new Date().toISOString(),
+                    status: "Pendente",
+                    createdAt: new Date()
                 };
                 
-                db.addApplication(newApplication);
+                // Salvar no Firebase
+                const docRef = await addDoc(collection(window.firebaseDB, "applications"), newApplication);
+                console.log("Candidatura salva com ID: ", docRef.id);
                 
                 // Enviar notificação para o Discord
                 const notificationSent = await discordWebhook.sendNewRegistrationNotification(newApplication);
@@ -1216,6 +968,7 @@
                 }, 3000);
                 
             } catch (error) {
+                console.error('Erro ao salvar candidatura:', error);
                 showAlert(registerAlert, 'Erro ao processar candidatura. Tente novamente.', 'error');
             } finally {
                 // Restaurar botão
@@ -1226,16 +979,20 @@
         });
         
         // Logout
-        logoutLink.addEventListener('click', (e) => {
+        logoutLink.addEventListener('click', async (e) => {
             e.preventDefault();
-            localStorage.removeItem('loggedIn');
-            localStorage.removeItem('userName');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('isAdmin');
-            localStorage.removeItem('userId');
-            adminLink.style.display = 'none';
-            logoutLink.style.display = 'none';
-            showPage('home');
+            try {
+                const { signOut } = window.firebaseFunctions;
+                await signOut(window.firebaseAuth);
+                
+                localStorage.removeItem('loggedIn');
+                localStorage.removeItem('userEmail');
+                adminLink.style.display = 'none';
+                logoutLink.style.display = 'none';
+                showPage('home');
+            } catch (error) {
+                console.error('Erro no logout:', error);
+            }
         });
         
         // Fechar modal
@@ -1250,128 +1007,109 @@
             }
         });
         
-        // Exportar dados
-        exportBtn.addEventListener('click', () => {
-            db.exportData();
-        });
-        
-        // Importar dados
-        importBtn.addEventListener('click', () => {
-            importFile.click();
-        });
-        
-        importFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    if (db.importData(event.target.result)) {
-                        alert('Dados importados com sucesso!');
-                        loadAdminData();
-                    } else {
-                        alert('Erro ao importar dados. Verifique o arquivo.');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        });
-        
-        // Limpar dados
-        resetBtn.addEventListener('click', () => {
-            if (db.clearAllData()) {
-                alert('Todos os dados foram limpos!');
-                loadAdminData();
-            }
-        });
-        
         // Função para carregar dados na página de administração
-        function loadAdminData() {
-            const applications = db.getApplications();
-            
-            // Atualizar estatísticas
-            document.getElementById('total-applications').textContent = applications.length;
-            document.getElementById('pending-applications').textContent = 
-                applications.filter(app => app.status === 'Pendente').length;
-            document.getElementById('approved-applications').textContent = 
-                applications.filter(app => app.status === 'Aprovada').length;
-            document.getElementById('rejected-applications').textContent = 
-                applications.filter(app => app.status === 'Rejeitada').length;
-            
-            // Limpar tabela
-            applicationsTableBody.innerHTML = '';
-            
-            // Preencher tabela com candidaturas
-            applications.forEach(application => {
-                const row = document.createElement('tr');
+        async function loadAdminData() {
+            try {
+                const { collection, getDocs, query, orderBy } = window.firebaseFunctions;
                 
-                row.innerHTML = `
-                    <td>${application.name}</td>
-                    <td>${application.age} anos</td>
-                    <td>${application.discordId || 'Não informado'}</td>
-                    <td>${application.registrationDate}</td>
-                    <td>${application.status}</td>
-                    <td>
-                        <button class="action-btn view-btn" data-id="${application.id}">Ver</button>
-                        <button class="action-btn approve-btn" data-id="${application.id}">Aprovar</button>
-                        <button class="action-btn reject-btn" data-id="${application.id}">Rejeitar</button>
-                    </td>
-                `;
+                const q = query(collection(window.firebaseDB, "applications"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
                 
-                applicationsTableBody.appendChild(row);
-            });
-            
-            // Adicionar event listeners aos botões
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const applicationId = parseInt(e.target.getAttribute('data-id'));
-                    viewApplication(applicationId);
+                const applications = [];
+                querySnapshot.forEach((doc) => {
+                    applications.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
                 });
-            });
-            
-            document.querySelectorAll('.approve-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const applicationId = parseInt(e.target.getAttribute('data-id'));
-                    const application = db.getApplications().find(app => app.id === applicationId);
-                    const oldStatus = application.status;
-                    const adminName = localStorage.getItem('userName') || 'Administrador';
+                
+                // Atualizar estatísticas
+                document.getElementById('total-applications').textContent = applications.length;
+                document.getElementById('pending-applications').textContent = 
+                    applications.filter(app => app.status === 'Pendente').length;
+                document.getElementById('approved-applications').textContent = 
+                    applications.filter(app => app.status === 'Aprovada').length;
+                document.getElementById('rejected-applications').textContent = 
+                    applications.filter(app => app.status === 'Rejeitada').length;
+                
+                // Limpar tabela
+                applicationsTableBody.innerHTML = '';
+                
+                // Preencher tabela com candidaturas
+                applications.forEach(application => {
+                    const row = document.createElement('tr');
                     
-                    if (db.updateApplicationStatus(applicationId, 'Aprovada')) {
-                        // Enviar notificação de resultado
-                        await discordWebhook.sendResultNotification(application, 'Aprovada', adminName);
-                        // Enviar notificação de atualização de status
-                        await discordWebhook.sendStatusUpdateNotification(application, oldStatus, 'Aprovada', adminName);
-                        loadAdminData();
-                        alert('Candidatura aprovada com sucesso! Notificação enviada.');
-                    }
-                });
-            });
-            
-            document.querySelectorAll('.reject-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const applicationId = parseInt(e.target.getAttribute('data-id'));
-                    const application = db.getApplications().find(app => app.id === applicationId);
-                    const oldStatus = application.status;
-                    const adminName = localStorage.getItem('userName') || 'Administrador';
+                    row.innerHTML = `
+                        <td>${application.name}</td>
+                        <td>${application.age} anos</td>
+                        <td>${application.discordId || 'Não informado'}</td>
+                        <td>${new Date(application.registrationDate).toLocaleDateString('pt-BR')}</td>
+                        <td>${application.status}</td>
+                        <td>
+                            <button class="action-btn view-btn" data-id="${application.id}">Ver</button>
+                            <button class="action-btn approve-btn" data-id="${application.id}">Aprovar</button>
+                            <button class="action-btn reject-btn" data-id="${application.id}">Rejeitar</button>
+                        </td>
+                    `;
                     
-                    if (db.updateApplicationStatus(applicationId, 'Rejeitada')) {
-                        // Enviar notificação de resultado
-                        await discordWebhook.sendResultNotification(application, 'Rejeitada', adminName);
-                        // Enviar notificação de atualização de status
-                        await discordWebhook.sendStatusUpdateNotification(application, oldStatus, 'Rejeitada', adminName);
-                        loadAdminData();
-                        alert('Candidatura rejeitada com sucesso! Notificação enviada.');
-                    }
+                    applicationsTableBody.appendChild(row);
                 });
-            });
-            
-            // Atualizar última atualização
-            db.updateLastUpdatedDisplay();
+                
+                // Adicionar event listeners aos botões
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const applicationId = e.target.getAttribute('data-id');
+                        viewApplication(applicationId, applications);
+                    });
+                });
+                
+                document.querySelectorAll('.approve-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const applicationId = e.target.getAttribute('data-id');
+                        const application = applications.find(app => app.id === applicationId);
+                        await updateApplicationStatus(applicationId, application, 'Aprovada');
+                    });
+                });
+                
+                document.querySelectorAll('.reject-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const applicationId = e.target.getAttribute('data-id');
+                        const application = applications.find(app => app.id === applicationId);
+                        await updateApplicationStatus(applicationId, application, 'Rejeitada');
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+            }
+        }
+        
+        // Função para atualizar status da candidatura
+        async function updateApplicationStatus(applicationId, application, status) {
+            try {
+                const { doc, updateDoc } = window.firebaseFunctions;
+                
+                await updateDoc(doc(window.firebaseDB, "applications", applicationId), {
+                    status: status
+                });
+                
+                const adminEmail = localStorage.getItem('userEmail') || 'Administrador';
+                
+                // Enviar notificação de resultado
+                await discordWebhook.sendResultNotification(application, status, adminEmail);
+                
+                alert(`Candidatura ${status.toLowerCase()} com sucesso! Notificação enviada.`);
+                loadAdminData();
+                
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+                alert('Erro ao atualizar candidatura.');
+            }
         }
         
         // Função para visualizar detalhes de uma candidatura
-        function viewApplication(id) {
-            const applications = db.getApplications();
-            const application = applications.find(app => app.id === id);
+        function viewApplication(applicationId, applications) {
+            const application = applications.find(app => app.id === applicationId);
             
             if (application) {
                 applicationDetails.innerHTML = `
@@ -1380,7 +1118,7 @@
                         <p><strong>Nome:</strong> ${application.name}</p>
                         <p><strong>Idade:</strong> ${application.age} anos</p>
                         <p><strong>Discord ID:</strong> ${application.discordId || 'Não informado'}</p>
-                        <p><strong>Data de Inscrição:</strong> ${application.registrationDate}</p>
+                        <p><strong>Data de Inscrição:</strong> ${new Date(application.registrationDate).toLocaleDateString('pt-BR')}</p>
                     </div>
                     
                     <div class="application-detail">
@@ -1421,28 +1159,27 @@
         // Verificar se o usuário está logado ao carregar a página
         window.addEventListener('DOMContentLoaded', () => {
             const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
-            const isAdmin = localStorage.getItem('isAdmin') === 'true';
-            const userName = localStorage.getItem('userName');
             
-            if (isLoggedIn && isAdmin) {
+            if (isLoggedIn) {
+                const userEmail = localStorage.getItem('userEmail');
                 adminLink.style.display = 'block';
                 logoutLink.style.display = 'block';
-                if (loggedAdminElement && userName) {
-                    loggedAdminElement.textContent = userName;
+                if (loggedAdminElement && userEmail) {
+                    loggedAdminElement.textContent = userEmail;
                 }
             }
             
             // Se estiver na página de admin, carregar os dados
-            if (document.getElementById('admin').classList.contains('active') && isAdmin) {
+            if (document.getElementById('admin').classList.contains('active') && isLoggedIn) {
                 loadAdminData();
             }
         });
         
         // Quando a página de admin é acessada, carregar os dados
         adminLink.addEventListener('click', () => {
-            const isAdmin = localStorage.getItem('isAdmin') === 'true';
+            const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
             
-            if (isAdmin) {
+            if (isLoggedIn) {
                 loadAdminData();
             } else {
                 alert('Acesso negado. Você não tem permissão para acessar esta página.');
