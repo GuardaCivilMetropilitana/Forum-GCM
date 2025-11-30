@@ -495,6 +495,97 @@
             margin-bottom: 1rem;
         }
         
+        /* Login Modal */
+        .login-modal {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .login-modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            padding: 2.5rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .login-modal h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .login-modal p {
+            margin-bottom: 2rem;
+            color: #64748b;
+        }
+        
+        .discord-login-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background-color: #5865F2;
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        .discord-login-btn:hover {
+            background-color: #4752c4;
+        }
+        
+        .discord-icon {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        
+        .user-details {
+            text-align: left;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .user-discriminator {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .header-content {
@@ -522,10 +613,42 @@
             .uniform-gallery {
                 grid-template-columns: 1fr;
             }
+            
+            .login-modal-content {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Modal de Login com Discord -->
+    <div class="login-modal" id="login-modal">
+        <div class="login-modal-content">
+            <h2>Bem-vindo ao Sistema GCM</h2>
+            <p>Para acessar o sistema, faça login com sua conta do Discord</p>
+            
+            <button class="discord-login-btn" id="discord-login-btn">
+                <svg class="discord-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.73 4.87a18.2 18.2 0 0 0-4.6-1.44c-.21.4-.4.8-.58 1.21a16.8 16.8 0 0 0-4.33 0c-.18-.41-.37-.82-.59-1.21a18.4 18.4 0 0 0-4.61 1.44c-3.18 4.83-4 9.64-3.57 14.35a18.8 18.8 0 0 0 5.72 2.87c.46-.63.86-1.3 1.2-2 .65.25 1.33.45 2.03.6.5-.68.93-1.4 1.3-2.16-.76-.28-1.48-.63-2.16-1.05.18-.14.36-.28.53-.44a13 13 0 0 0 10.4 0c.17.16.35.3.53.44-.68.42-1.4.77-2.16 1.05.37.75.8 1.48 1.3 2.16.7-.15 1.38-.35 2.03-.6.34.7.74 1.37 1.2 2a18.8 18.8 0 0 0 5.72-2.87c.57-5.4-.97-10.2-3.57-14.35zM8.7 15.12c-1.1 0-2-1.02-2-2.27 0-1.25.88-2.27 2-2.27 1.12 0 2.02 1.02 2 2.27 0 1.25-.88 2.27-2 2.27zm6.6 0c-1.1 0-2-1.02-2-2.27 0-1.25.88-2.27 2-2.27 1.12 0 2.02 1.02 2 2.27 0 1.25-.88 2.27-2 2.27z"/>
+                </svg>
+                Entrar com Discord
+            </button>
+            
+            <div id="user-info-container" style="display: none;">
+                <div class="user-info">
+                    <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+                    <div class="user-details">
+                        <div class="user-name" id="user-name"></div>
+                        <div class="user-discriminator" id="user-discriminator"></div>
+                    </div>
+                </div>
+                <button class="btn" id="continue-btn">Continuar para o Site</button>
+            </div>
+            
+            <div id="login-status" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+    
     <header>
         <div class="container">
             <div class="header-content">
@@ -886,6 +1009,133 @@
     </footer>
     
     <script>
+        // Configuração do Discord OAuth2
+        const DISCORD_CLIENT_ID = '1425911251665424494';
+        const DISCORD_REDIRECT_URI = window.location.origin + window.location.pathname;
+        const DISCORD_SCOPE = 'identify guilds.members.read';
+        
+        // IDs dos administradores
+        const ADMIN_USER_IDS = [
+            '860924878886535231', // ID do admin fornecido
+            '1199700686791786688', // ID do admin fornecido
+            '1243634668457299982' // ID do admin fornecido
+        ];
+        
+        // Serviço de Autenticação Discord
+        class DiscordAuthService {
+            constructor() {
+                this.accessToken = localStorage.getItem('discord_access_token');
+                this.user = JSON.parse(localStorage.getItem('discord_user') || 'null');
+                this.isAdmin = localStorage.getItem('discord_is_admin') === 'true';
+            }
+            
+            // Iniciar processo de login
+            login() {
+                const state = this.generateRandomState();
+                localStorage.setItem('discord_oauth_state', state);
+                
+                const authUrl = new URL('https://discord.com/api/oauth2/authorizehttps://discord.com/oauth2/authorize?client_id=1425911251665424494&response_type=code&redirect_uri=https%3A%2F%2Fguardacivilmetropilitana.github.io%2FForum-GCM%2F&scope=identify+guilds.members.read');
+                authUrl.searchParams.set('client_id', DISCORD_CLIENT_ID);
+                authUrl.searchParams.set('redirect_uri', DISCORD_REDIRECT_URI);
+                authUrl.searchParams.set('response_type', 'token');
+                authUrl.searchParams.set('scope', DISCORD_SCOPE);
+                authUrl.searchParams.set('state', state);
+                authUrl.searchParams.set('prompt', 'none');
+                
+                window.location.href = authUrl.toString();
+            }
+            
+            // Processar retorno do OAuth
+            async handleCallback() {
+                const hash = window.location.hash.substring(1);
+                const params = new URLSearchParams(hash);
+                
+                const accessToken = params.get('access_token');
+                const tokenType = params.get('token_type');
+                const state = params.get('state');
+                const storedState = localStorage.getItem('discord_oauth_state');
+                
+                if (accessToken && state === storedState) {
+                    this.accessToken = accessToken;
+                    localStorage.setItem('discord_access_token', accessToken);
+                    localStorage.removeItem('discord_oauth_state');
+                    
+                    // Obter informações do usuário
+                    await this.fetchUserInfo();
+                    
+                    // Verificar se é admin
+                    await this.checkAdminStatus();
+                    
+                    // Limpar URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            // Buscar informações do usuário
+            async fetchUserInfo() {
+                try {
+                    const response = await fetch('https://discord.com/api/users/@me', {
+                        headers: {
+                            'Authorization': `Bearer ${this.accessToken}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        this.user = await response.json();
+                        localStorage.setItem('discord_user', JSON.stringify(this.user));
+                        return this.user;
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar informações do usuário:', error);
+                }
+                
+                return null;
+            }
+            
+            // Verificar se o usuário é admin
+            async checkAdminStatus() {
+                try {
+                    // Verificação simples baseada em IDs de usuário
+                    this.isAdmin = ADMIN_USER_IDS.includes(this.user.id);
+                    localStorage.setItem('discord_is_admin', this.isAdmin.toString());
+                    
+                    return this.isAdmin;
+                } catch (error) {
+                    console.error('Erro ao verificar status de admin:', error);
+                    this.isAdmin = false;
+                    localStorage.setItem('discord_is_admin', 'false');
+                    return false;
+                }
+            }
+            
+            // Logout
+            logout() {
+                this.accessToken = null;
+                this.user = null;
+                this.isAdmin = false;
+                
+                localStorage.removeItem('discord_access_token');
+                localStorage.removeItem('discord_user');
+                localStorage.removeItem('discord_is_admin');
+                
+                window.location.reload();
+            }
+            
+            // Gerar state aleatório para segurança OAuth
+            generateRandomState() {
+                return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            }
+            
+            // Verificar se está autenticado
+            isAuthenticated() {
+                return !!this.accessToken && !!this.user;
+            }
+        }
+        
         // Serviço de Webhook do Discord
         class DiscordWebhookService {
             constructor() {
@@ -1064,6 +1314,7 @@
         }
         
         // Inicializar serviços
+        const discordAuth = new DiscordAuthService();
         const discordWebhook = new DiscordWebhookService();
         const authService = new CustomAuthService();
         
@@ -1087,6 +1338,16 @@
         const registerLoading = document.getElementById('register-loading');
         const loggedAdminElement = document.getElementById('logged-admin');
         const adminAccessBtn = document.getElementById('admin-access-btn');
+        
+        // Elementos para o modal de login
+        const loginModal = document.getElementById('login-modal');
+        const discordLoginBtn = document.getElementById('discord-login-btn');
+        const userInfoContainer = document.getElementById('user-info-container');
+        const userAvatar = document.getElementById('user-avatar');
+        const userName = document.getElementById('user-name');
+        const userDiscriminator = document.getElementById('user-discriminator');
+        const continueBtn = document.getElementById('continue-btn');
+        const loginStatus = document.getElementById('login-status');
         
         // Elementos para a página de uniformes
         const uniformTabs = document.querySelectorAll('.uniform-tab');
@@ -1114,11 +1375,58 @@
             registerAlert.innerHTML = '';
         }
         
+        // Função para atualizar a interface com informações do usuário
+        function updateUserInterface() {
+            if (discordAuth.isAuthenticated()) {
+                // Mostrar informações do usuário no modal
+                userAvatar.src = `https://cdn.discordapp.com/avatars/${discordAuth.user.id}/${discordAuth.user.avatar}.png?size=64`;
+                userName.textContent = discordAuth.user.username;
+                userDiscriminator.textContent = `#${discordAuth.user.discriminator}`;
+                userInfoContainer.style.display = 'block';
+                discordLoginBtn.style.display = 'none';
+                
+                // Verificar se é admin e mostrar/ocultar link de administração
+                if (discordAuth.isAdmin) {
+                    adminLink.style.display = 'block';
+                    logoutLink.style.display = 'block';
+                    loginStatus.innerHTML = '<div class="alert alert-success">✅ Você tem acesso administrativo!</div>';
+                    
+                    // Atualizar nome do admin logado
+                    if (loggedAdminElement) {
+                        loggedAdminElement.textContent = `${discordAuth.user.username}#${discordAuth.user.discriminator}`;
+                    }
+                } else {
+                    adminLink.style.display = 'none';
+                    logoutLink.style.display = 'block';
+                    loginStatus.innerHTML = '<div class="alert alert-info">👤 Você está logado como usuário regular.</div>';
+                }
+                
+                // Preencher automaticamente o campo Discord ID no formulário de candidatura
+                const discordIdField = document.getElementById('register-discord');
+                if (discordIdField) {
+                    discordIdField.value = `${discordAuth.user.username}#${discordAuth.user.discriminator}`;
+                }
+            } else {
+                userInfoContainer.style.display = 'none';
+                discordLoginBtn.style.display = 'inline-flex';
+                adminLink.style.display = 'none';
+                logoutLink.style.display = 'none';
+            }
+        }
+        
         // Navegação entre páginas
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const pageId = link.getAttribute('data-page');
+                
+                // Verificar acesso à página de administração
+                if (pageId === 'admin' && (!discordAuth.isAuthenticated() || !discordAuth.isAdmin)) {
+                    showAlert(loginAlert, 'Acesso negado. Você precisa ser um administrador para acessar esta página.', 'error');
+                    showPage('login');
+                    return;
+                }
+                
                 showPage(pageId);
             });
         });
@@ -1131,7 +1439,12 @@
         
         // Botão de acesso administrativo
         adminAccessBtn.addEventListener('click', () => {
-            showPage('login');
+            if (discordAuth.isAuthenticated() && discordAuth.isAdmin) {
+                showPage('admin');
+                loadAdminData();
+            } else {
+                showPage('login');
+            }
         });
         
         // Sistema de abas para uniformes
@@ -1151,7 +1464,18 @@
             });
         });
         
-        // Login com Nome de Usuário
+        // Login com Discord
+        discordLoginBtn.addEventListener('click', () => {
+            discordAuth.login();
+        });
+        
+        // Continuar para o site após login
+        continueBtn.addEventListener('click', () => {
+            loginModal.style.display = 'none';
+            showPage('home');
+        });
+        
+        // Login com Nome de Usuário (fallback)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('login-username').value;
@@ -1286,12 +1610,16 @@
         logoutLink.addEventListener('click', (e) => {
             e.preventDefault();
             
-            localStorage.removeItem('loggedIn');
-            localStorage.removeItem('adminUsername');
-            localStorage.removeItem('adminName');
-            adminLink.style.display = 'none';
-            logoutLink.style.display = 'none';
-            showPage('home');
+            if (discordAuth.isAuthenticated()) {
+                discordAuth.logout();
+            } else {
+                localStorage.removeItem('loggedIn');
+                localStorage.removeItem('adminUsername');
+                localStorage.removeItem('adminName');
+                adminLink.style.display = 'none';
+                logoutLink.style.display = 'none';
+                showPage('home');
+            }
         });
         
         // Fechar modal
@@ -1303,6 +1631,10 @@
         window.addEventListener('click', (e) => {
             if (e.target === applicationModal) {
                 applicationModal.style.display = 'none';
+            }
+            if (e.target === loginModal) {
+                // Não permitir fechar o modal de login clicando fora
+                // loginModal.style.display = 'none';
             }
         });
         
@@ -1392,7 +1724,7 @@
                     status: status
                 });
                 
-                const adminName = localStorage.getItem('adminName') || 'Administrador';
+                const adminName = discordAuth.user ? `${discordAuth.user.username}#${discordAuth.user.discriminator}` : localStorage.getItem('adminName') || 'Administrador';
                 
                 // Enviar notificação de resultado
                 await discordWebhook.sendResultNotification(application, status, adminName);
@@ -1455,21 +1787,46 @@
             }
         }
         
-        // Verificar se o usuário está logado ao carregar a página
-        window.addEventListener('DOMContentLoaded', () => {
+        // Inicialização da aplicação
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Verificar se há um token de acesso no URL (retorno do OAuth)
+            const hasHash = window.location.hash.includes('access_token');
+            
+            if (hasHash) {
+                // Processar callback do OAuth
+                const success = await discordAuth.handleCallback();
+                
+                if (success) {
+                    updateUserInterface();
+                    loginModal.style.display = 'none';
+                    showPage('home');
+                } else {
+                    loginStatus.innerHTML = '<div class="alert alert-error">Erro ao fazer login com Discord. Tente novamente.</div>';
+                }
+            } else if (discordAuth.isAuthenticated()) {
+                // Usuário já está autenticado
+                updateUserInterface();
+                loginModal.style.display = 'none';
+            } else {
+                // Mostrar modal de login
+                loginModal.style.display = 'flex';
+            }
+            
+            // Verificar login tradicional (fallback)
             const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
             
-            if (isLoggedIn) {
+            if (isLoggedIn && !discordAuth.isAuthenticated()) {
                 const adminName = localStorage.getItem('adminName');
                 adminLink.style.display = 'block';
                 logoutLink.style.display = 'block';
                 if (loggedAdminElement && adminName) {
                     loggedAdminElement.textContent = adminName;
                 }
+                loginModal.style.display = 'none';
             }
             
             // Se estiver na página de admin, carregar os dados
-            if (document.getElementById('admin').classList.contains('active') && isLoggedIn) {
+            if (document.getElementById('admin').classList.contains('active') && (isLoggedIn || discordAuth.isAdmin)) {
                 loadAdminData();
             }
         });
@@ -1478,7 +1835,7 @@
         adminLink.addEventListener('click', () => {
             const isLoggedIn = localStorage.getItem('loggedIn') === 'true';
             
-            if (isLoggedIn) {
+            if (isLoggedIn || discordAuth.isAdmin) {
                 loadAdminData();
             } else {
                 alert('Acesso negado. Você não tem permissão para acessar esta página.');
